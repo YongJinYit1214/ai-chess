@@ -120,6 +120,19 @@ class ChessGame:
         self.valid_moves = []
         self.running = True
         self.font = pygame.font.Font(None, 30)
+        self.piece_images = {}
+        self.load_images()
+        
+    def load_images(self):
+        pieces = ['wP', 'wN', 'wB', 'wR', 'wQ', 'wK', 'bP', 'bN', 'bB', 'bR', 'bQ', 'bK']
+        for piece in pieces:
+            try:
+                # Load the image from your assets folder
+                img = pygame.image.load(f"assets/{piece}.png")
+                # Scale it to fit beautifully inside the board squares
+                self.piece_images[piece] = pygame.transform.scale(img, (SQUARE_SIZE, SQUARE_SIZE))
+            except FileNotFoundError:
+                print(f"Warning: Could not find asset assets/{piece}.png")
     
     def handle_click(self, pos: Tuple[int, int]):
         col = pos[0] // SQUARE_SIZE
@@ -264,25 +277,32 @@ class ChessGame:
             pygame.draw.circle(self.screen, HIGHLIGHT_COLOR, (center_x, center_y), 8)
     
     def draw_pieces(self):
-        piece_symbols = {
-            PieceType.PAWN: "♟",
-            PieceType.KNIGHT: "♞",
-            PieceType.BISHOP: "♝",
-            PieceType.ROOK: "♜",
-            PieceType.QUEEN: "♛",
-            PieceType.KING: "♚"
-        }
-        
         for row in range(BOARD_SIZE):
             for col in range(BOARD_SIZE):
                 piece = self.board.get_piece(row, col)
                 if piece:
-                    x = col * SQUARE_SIZE + SQUARE_SIZE // 2
-                    y = row * SQUARE_SIZE + SQUARE_SIZE // 2
-                    color = (255, 255, 255) if piece.color == Color.WHITE else (0, 0, 0)
-                    text_surface = self.font.render(piece_symbols[piece.piece_type], True, color)
-                    text_rect = text_surface.get_rect(center=(x, y))
-                    self.screen.blit(text_surface, text_rect)
+                    piece_key = str(piece) # e.g., "wP", "bK"
+                    
+                    # If the image exists in our dictionary, draw it
+                    if piece_key in self.piece_images:
+                        x = col * SQUARE_SIZE
+                        y = row * SQUARE_SIZE
+                        self.screen.blit(self.piece_images[piece_key], (x, y))
+                    else:
+                        # FALLBACK: If an image is missing, draw large text so it's centered
+                        fallback_font = pygame.font.Font(None, 70)
+                        piece_symbols = {
+                            PieceType.PAWN: "P", PieceType.KNIGHT: "N", 
+                            PieceType.BISHOP: "B", PieceType.ROOK: "R", 
+                            PieceType.QUEEN: "Q", PieceType.KING: "K"
+                        }
+                        x = col * SQUARE_SIZE + SQUARE_SIZE // 2
+                        y = row * SQUARE_SIZE + SQUARE_SIZE // 2
+                        color = (255, 255, 255) if piece.color == Color.WHITE else (0, 0, 0)
+                        
+                        text_surface = fallback_font.render(piece_symbols[piece.piece_type], True, color)
+                        text_rect = text_surface.get_rect(center=(x, y))
+                        self.screen.blit(text_surface, text_rect)
     
     def draw(self):
         self.screen.fill((255, 255, 255))
