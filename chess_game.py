@@ -192,6 +192,15 @@ class ChessGame:
                     if (self.board.get_piece(row + direction, col) is None and
                         self.board.get_piece(target_row, col) is None):
                         moves.append((target_row, col))
+            
+            # Capture diagonally
+            for dc in [-1, 1]:
+                target_row = row + direction
+                target_col = col + dc
+                if 0 <= target_row < BOARD_SIZE and 0 <= target_col < BOARD_SIZE:
+                    target = self.board.get_piece(target_row, target_col)
+                    if target is not None and target.color != piece.color:
+                        moves.append((target_row, target_col))
         
         elif piece.piece_type == PieceType.KNIGHT:
             knight_moves = [
