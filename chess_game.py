@@ -34,6 +34,7 @@ class Color(Enum):
 class Piece:
     piece_type: PieceType
     color: Color
+    has_moved: bool = False
     
     def __str__(self):
         color_str = "w" if self.color == Color.WHITE else "b"
@@ -106,6 +107,7 @@ class Board:
             return False
         
         piece = self.get_piece(from_row, from_col)
+        piece.has_moved = True
         self.set_piece(to_row, to_col, piece)
         self.set_piece(from_row, from_col, None)
         return True
@@ -175,11 +177,21 @@ class ChessGame:
         
         if piece.piece_type == PieceType.PAWN:
             direction = -1 if piece.color == Color.WHITE else 1
-            target_row = row + direction
             
+            # Move 1 square forward
+            target_row = row + direction
             if 0 <= target_row < BOARD_SIZE:
                 if self.board.get_piece(target_row, col) is None:
                     moves.append((target_row, col))
+            
+            # Move 2 squares forward on first move
+            if not piece.has_moved:
+                target_row = row + 2 * direction
+                if 0 <= target_row < BOARD_SIZE:
+                    # Check both the 1-square and 2-square positions are empty
+                    if (self.board.get_piece(row + direction, col) is None and
+                        self.board.get_piece(target_row, col) is None):
+                        moves.append((target_row, col))
         
         elif piece.piece_type == PieceType.KNIGHT:
             knight_moves = [
