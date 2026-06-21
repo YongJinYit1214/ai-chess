@@ -123,6 +123,7 @@ class ChessGame:
         self.running = True
         self.font = pygame.font.Font(None, 30)
         self.piece_images = {}
+        self.last_move = None  # Track (from_row, from_col, to_row, to_col)
         self.load_images()
         
     def load_images(self):
@@ -151,6 +152,8 @@ class ChessGame:
             elif (row, col) in self.valid_moves:
                 from_row, from_col = self.selected_square
                 self.board.move_piece(from_row, from_col, row, col)
+                self.handle_en_passant(from_row, from_col, row, col)
+                self.last_move = (from_row, from_col, row, col)
                 self.selected_square = None
                 self.valid_moves = []
             else:
@@ -160,6 +163,17 @@ class ChessGame:
                 else:
                     self.selected_square = None
                     self.valid_moves = []
+    
+    def handle_en_passant(self, from_row: int, from_col: int, to_row: int, to_col: int):
+        piece = self.board.get_piece(to_row, to_col)
+        if piece is not None and piece.piece_type == PieceType.PAWN and self.last_move is not None:
+            last_from_row, last_from_col, last_to_row, last_to_col = self.last_move
+            # Check if this was an en passant capture
+            if (to_col == last_to_col and 
+                abs(from_row - to_row) == 1 and 
+                from_col != to_col):
+                # Remove the captured pawn
+                self.board.set_piece(last_to_row, last_to_col, None)
     
     def calculate_valid_moves(self):
         if self.selected_square is None:
@@ -201,6 +215,21 @@ class ChessGame:
                     target = self.board.get_piece(target_row, target_col)
                     if target is not None and target.color != piece.color:
                         moves.append((target_row, target_col))
+            
+            # En passant capture
+            if self.last_move is not None:
+                last_from_row, last_from_col, last_to_row, last_to_col = self.last_move
+                last_piece = self.board.get_piece(last_to_row, last_to_col)
+                
+                # Check if last move was opponent's pawn moving 2 squares
+                if (last_piece is not None and 
+                    last_piece.piece_type == PieceType.PAWN and
+                    last_piece.color != piece.color and
+                    abs(last_from_row - last_to_row) == 2 and
+                    last_to_row == row and abs(last_to_col - col) == 1):
+                    # En passant is possible
+                    en_passant_row = row + direction
+                    moves.append((en_passant_row, last_to_col))
         
         elif piece.piece_type == PieceType.KNIGHT:
             knight_moves = [
