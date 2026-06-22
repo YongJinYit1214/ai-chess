@@ -294,6 +294,65 @@ def has_any_legal_move(board: Board, color: Color, last_move: Optional[Tuple]) -
     return False
 
 
+def evaluate_board(board: Board):
+    score = 0
+    for row in range(BOARD_SIZE):
+        for col in range(BOARD_SIZE):
+            piece = board.get(row, col)
+            if piece:
+                value = PIECE_VALUES[piece.piece_type]
+                score += value if piece.color == Color.WHITE else -value
+    return score
+
+def get_all_moves(board, color, last_move):
+    moves=[]
+    for r in range(BOARD_SIZE):
+        for c in range(BOARD_SIZE):
+            piece=board.get(r,c)
+            if piece and piece.color==color:
+                for tr,tc in get_legal_moves(board,r,c,last_move):
+                    moves.append(((r,c),(tr,tc)))
+    return moves
+
+def minimax(board, depth, alpha, beta, maximizing, last_move):
+    if depth==0:
+        return evaluate_board(board)
+
+    if maximizing:
+        value=float('-inf')
+        for move in get_all_moves(board, Color.WHITE, last_move):
+            (fr,fc),(tr,tc)=move
+            nb=apply_move(board,fr,fc,tr,tc,last_move)
+            value=max(value,minimax(nb,depth-1,alpha,beta,False,(fr,fc,tr,tc)))
+            alpha=max(alpha,value)
+            if beta<=alpha:
+                break
+        return value
+    else:
+        value=float('inf')
+        for move in get_all_moves(board, Color.BLACK, last_move):
+            (fr,fc),(tr,tc)=move
+            nb=apply_move(board,fr,fc,tr,tc,last_move)
+            value=min(value,minimax(nb,depth-1,alpha,beta,True,(fr,fc,tr,tc)))
+            beta=min(beta,value)
+            if beta<=alpha:
+                break
+        return value
+
+def get_best_move(board,last_move,depth=3):
+    best_score=float('inf')
+    best_move=None
+    for move in get_all_moves(board, Color.BLACK, last_move):
+        (fr,fc),(tr,tc)=move
+        nb=apply_move(board,fr,fc,tr,tc,last_move)
+        score=minimax(nb,depth-1,float('-inf'),float('inf'),True,(fr,fc,tr,tc))
+        if score<best_score:
+            best_score=score
+            best_move=move
+    return best_move
+
+
+
 class GameState(Enum):
     PLAYING    = 0
     CHECK      = 1
@@ -410,6 +469,9 @@ class ChessGame:
 
         self.switch_turn()
 
+        if self.current_turn == Color.BLACK and self.game_state not in (GameState.CHECKMATE, GameState.STALEMATE):
+            self.make_ai_move()
+
     def switch_turn(self):
         self.current_turn = (Color.BLACK if self.current_turn == Color.WHITE
                              else Color.WHITE)
@@ -436,6 +498,16 @@ class ChessGame:
             turn_str = "White" if self.current_turn == Color.WHITE else "Black"
             self.status_msg = f"{turn_str}'s turn"
 
+    def make_ai_move(self):
+        move = get_best_move(self.board, self.last_move, 3)
+        if move:
+            (fr, fc), (tr, tc) = move
+            self.board = apply_move(self.board, fr, fc, tr, tc, self.last_move)
+            self.last_move = (fr, fc, tr, tc)
+            self.current_turn = Color.WHITE
+            self.game_state = GameState.PLAYING
+            self.status_msg = "White's turn"
+
     def handle_promotion_click(self, x: int, y: int):
         options = [PieceType.QUEEN, PieceType.ROOK, PieceType.BISHOP, PieceType.KNIGHT]
         menu_width = SQUARE_SIZE * 4
@@ -451,7 +523,10 @@ class ChessGame:
                 self.promotion_square = None
                 self.promotion_color = None
                 self.switch_turn()
-                return
+
+        if self.current_turn == Color.BLACK and self.game_state not in (GameState.CHECKMATE, GameState.STALEMATE):
+            self.make_ai_move()
+            return
 
     # ------------------------------------------------------------------ #
     #  Drawing
@@ -599,7 +674,7 @@ class ChessGame:
             score_surface,
             (WINDOW_WIDTH - 60, BOARD_HEIGHT + 18)
         )
-        
+
         # Turn indicator dot
         dot_color = (255,255,255) if self.current_turn == Color.WHITE else (80,80,80)
         pygame.draw.circle(self.screen, dot_color, (20, BOARD_HEIGHT + INFO_HEIGHT//2), 10)
