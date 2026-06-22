@@ -31,6 +31,14 @@ class PieceType(Enum):
     QUEEN  = 5
     KING   = 6
 
+PIECE_VALUES = {
+    PieceType.PAWN: 1,
+    PieceType.KNIGHT: 3,
+    PieceType.BISHOP: 3,
+    PieceType.ROOK: 5,
+    PieceType.QUEEN: 9,
+    PieceType.KING: 0,
+}
 
 class Color(Enum):
     WHITE = 1
@@ -323,6 +331,23 @@ class ChessGame:
             except (FileNotFoundError, pygame.error):
                 pass
 
+    def get_material_score(self):
+        white_score = 0
+        black_score = 0
+
+        for row in range(BOARD_SIZE):
+            for col in range(BOARD_SIZE):
+                piece = self.board.get(row, col)
+                if piece:
+                    value = PIECE_VALUES[piece.piece_type]
+
+                    if piece.color == Color.WHITE:
+                        white_score += value
+                    else:
+                        black_score += value
+
+        return white_score, black_score
+
     # ------------------------------------------------------------------ #
     #  Input handling
     # ------------------------------------------------------------------ #
@@ -552,6 +577,29 @@ class ChessGame:
         tr = ts.get_rect(center=(WINDOW_WIDTH//2, BOARD_HEIGHT + INFO_HEIGHT//2))
         self.screen.blit(ts, tr)
 
+        white_score, black_score = self.get_material_score()
+        material_diff = white_score - black_score
+
+        if material_diff > 0:
+            score_text = f"+{material_diff}"
+        elif material_diff < 0:
+            score_text = f"{material_diff}"   # already negative
+        else:
+            score_text = "0"
+
+        score_font = pygame.font.Font(None, 28)
+
+        score_surface = score_font.render(
+            score_text,
+            True,
+            (255, 255, 255)
+        )
+
+        self.screen.blit(
+            score_surface,
+            (WINDOW_WIDTH - 60, BOARD_HEIGHT + 18)
+        )
+        
         # Turn indicator dot
         dot_color = (255,255,255) if self.current_turn == Color.WHITE else (80,80,80)
         pygame.draw.circle(self.screen, dot_color, (20, BOARD_HEIGHT + INFO_HEIGHT//2), 10)
